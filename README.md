@@ -105,8 +105,8 @@ twitter post "reply text" --reply-to 1234567890
 twitter delete 1234567890
 twitter like 1234567890
 twitter unlike 1234567890
-twitter rt 1234567890
-twitter unrt 1234567890
+twitter retweet 1234567890
+twitter unretweet 1234567890
 twitter favorite 1234567890
 twitter unfavorite 1234567890
 ```
@@ -302,8 +302,8 @@ twitter post "回复内容" --reply-to 1234567890
 twitter delete 1234567890
 twitter like 1234567890
 twitter unlike 1234567890
-twitter rt 1234567890
-twitter unrt 1234567890
+twitter retweet 1234567890
+twitter unretweet 1234567890
 twitter favorite 1234567890
 twitter unfavorite 1234567890
 ```

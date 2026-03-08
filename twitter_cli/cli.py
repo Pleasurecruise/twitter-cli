@@ -18,7 +18,7 @@ Write commands:
     twitter delete <id>               # delete a tweet
     twitter like/unlike <id>          # like/unlike
     twitter favorite/unfavorite <id>  # bookmark/unbookmark
-    twitter rt/unrt <id>              # retweet/unretweet
+    twitter retweet/unretweet <id>    # retweet/unretweet
 """
 
 from __future__ import annotations
