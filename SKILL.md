@@ -13,40 +13,94 @@ tags:
 
 # twitter-cli Skill
 
-Use this skill when the user wants to read Twitter/X content from terminal without API keys.
+Use this skill when the user wants to read or interact with Twitter/X content from terminal without API keys.
 
-## Requirements
-
-- `twitter-cli` installed and available in PATH.
-- User is logged in to `x.com` in Chrome/Edge/Firefox/Brave, or sets:
-  - `TWITTER_AUTH_TOKEN`
-  - `TWITTER_CT0`
-
-## Core Commands
+## Prerequisites
 
 ```bash
-# Home timeline (For You)
-twitter feed
+# Install (requires Python 3.10+)
+uv tool install twitter-cli
+# Or: pipx install twitter-cli
+```
 
-# Following timeline
-twitter feed -t following
+## Authentication
 
-# Bookmarks
-twitter favorites
+- Auto-extracts browser cookies from Chrome/Edge/Firefox/Brave.
+- Or set environment variables: `TWITTER_AUTH_TOKEN` + `TWITTER_CT0`.
 
-# User profile and posts
-twitter user <screen_name>
-twitter user-posts <screen_name> --max 20
+## Command Reference
+
+### Feed
+
+```bash
+twitter feed                           # Home timeline (For You)
+twitter feed -t following              # Following timeline
+twitter feed --max 50                  # Limit count
+twitter feed --filter                  # Enable ranking filter
+twitter feed --json > tweets.json      # Export as JSON
+twitter feed --input tweets.json       # Read from local JSON file
+```
+
+### Bookmarks
+
+```bash
+twitter favorites                      # List bookmarked tweets
+twitter favorites --max 30 --json
+twitter favorites --filter             # Apply ranking filter
+```
+
+### Search
+
+```bash
+twitter search "keyword"
+twitter search "AI agent" -t Latest --max 50
+twitter search "机器学习" --json
+```
+
+### Tweet Detail
+
+```bash
+twitter tweet 1234567890                          # View tweet + replies
+twitter tweet https://x.com/user/status/12345     # Accepts URL too
+```
+
+### List Timeline
+
+```bash
+twitter list 1539453138322673664       # Fetch tweets from a Twitter List
+```
+
+### User
+
+```bash
+twitter user elonmusk                  # User profile
+twitter user-posts elonmusk --max 20   # User's tweets
+twitter likes elonmusk --max 30        # User's likes
+twitter followers elonmusk --max 50    # User's followers
+twitter following elonmusk --max 50    # User's following
+```
+
+### Write Operations
+
+```bash
+twitter post "Hello from twitter-cli!"              # Post tweet
+twitter post "reply text" --reply-to 1234567890      # Reply
+twitter delete 1234567890                            # Delete tweet
+twitter like 1234567890                              # Like
+twitter unlike 1234567890                            # Unlike
+twitter retweet 1234567890                           # Retweet
+twitter unretweet 1234567890                         # Unretweet
+twitter favorite 1234567890                          # Bookmark
+twitter unfavorite 1234567890                        # Unbookmark
 ```
 
 ## JSON / Scripting
 
 ```bash
-# Export feed as JSON
 twitter feed --json > tweets.json
-
-# Read from local JSON file
 twitter feed --input tweets.json
+twitter user-posts elonmusk --json | jq '.[0].text'
+twitter search "keyword" --json | jq 'length'
 ```
 
 ## Ranking Filter
@@ -69,6 +123,29 @@ score = likes_w * likes
 ```
 
 Configure weights and mode in `config.yaml`.
+
+## Common Patterns for AI Agents
+
+```bash
+# Get latest tweets from a user
+twitter user-posts elonmusk --max 5 --json
+
+# Search and export for analysis
+twitter search "topic" --json > results.json
+
+# Check user profile
+twitter user elonmusk --json
+
+# Daily reading workflow
+twitter feed -t following --filter
+twitter favorites --filter
+```
+
+## Error Handling
+
+- `No Twitter cookies found` — login to `x.com` in a supported browser, or set env vars.
+- `Cookie expired or invalid (HTTP 401/403)` — re-login to `x.com` and retry.
+- `Twitter API error 404` — queryId rotation, retry the command (client has live fallback).
 
 ## Safety Notes
 
