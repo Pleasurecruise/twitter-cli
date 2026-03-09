@@ -589,12 +589,19 @@ class TwitterClient:
             return
         self._ct_init_attempted = True
         try:
-            session = _requests_lib.Session()
-            session.headers.update(_gen_ct_headers())
-            home_page = session.get("https://x.com", timeout=10)
+            # Use curl_cffi for ClientTransaction init to maintain consistent
+            # Chrome TLS fingerprint. Using Python requests here would leak
+            # a different TLS fingerprint on the same IP — a detection vector.
+            cffi_session = _get_cffi_session()
+            ct_headers = _gen_ct_headers()
+            home_page = cffi_session.get(
+                "https://x.com", headers=ct_headers, timeout=10,
+            )
             home_page_response = bs4.BeautifulSoup(home_page.content, "html.parser")
             ondemand_url = get_ondemand_file_url(response=home_page_response)
-            ondemand_file = session.get(ondemand_url, timeout=10)
+            ondemand_file = cffi_session.get(
+                ondemand_url, headers=ct_headers, timeout=10,
+            )
             self._client_transaction = ClientTransaction(
                 home_page_response=home_page_response,
                 ondemand_file_response=ondemand_file.text,
