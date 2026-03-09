@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Shared curl_cffi session — impersonates Chrome 133 TLS/JA3/HTTP2 fingerprint
 _cffi_session = None  # type: Optional[Any]  # lazy init
+_cffi_proxy = None  # type: Optional[str]
 
 
 FALLBACK_QUERY_IDS = {
@@ -110,10 +111,17 @@ class TwitterAPIError(RuntimeError):
 
 def _get_cffi_session():
     # type: () -> Any
-    """Return shared curl_cffi session with Chrome impersonation."""
+    """Return shared curl_cffi session with Chrome impersonation and optional proxy."""
     global _cffi_session
     if _cffi_session is None:
-        _cffi_session = _cffi_requests.Session(impersonate="chrome133")
+        import os
+        proxy = os.environ.get("TWITTER_PROXY", "")
+        _cffi_session = _cffi_requests.Session(
+            impersonate="chrome133",
+            proxies={"https": proxy, "http": proxy} if proxy else None,
+        )
+        if proxy:
+            logger.info("Using proxy: %s", proxy[:20] + "...")
     return _cffi_session
 
 
@@ -235,10 +243,11 @@ _ABSOLUTE_MAX_COUNT = 500
 class TwitterClient:
     """Twitter GraphQL API client using cookie authentication."""
 
-    def __init__(self, auth_token, ct0, rate_limit_config=None):
-        # type: (str, str, Optional[Dict[str, Any]]) -> None
+    def __init__(self, auth_token, ct0, rate_limit_config=None, cookie_string=None):
+        # type: (str, str, Optional[Dict[str, Any]], Optional[str]) -> None
         self._auth_token = auth_token
         self._ct0 = ct0
+        self._cookie_string = cookie_string  # Full browser cookie string
         rl = rate_limit_config or {}
         self._request_delay = float(rl.get("requestDelay", 2.5))
         self._max_retries = int(rl.get("maxRetries", 3))
@@ -599,7 +608,7 @@ class TwitterClient:
         """Build shared headers for authenticated API calls."""
         headers = {
             "Authorization": "Bearer %s" % BEARER_TOKEN,
-            "Cookie": "auth_token=%s; ct0=%s" % (self._auth_token, self._ct0),
+            "Cookie": self._cookie_string or "auth_token=%s; ct0=%s" % (self._auth_token, self._ct0),
             "X-Csrf-Token": self._ct0,
             "X-Twitter-Active-User": "yes",
             "X-Twitter-Auth-Type": "OAuth2Session",

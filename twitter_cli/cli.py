@@ -80,7 +80,12 @@ def _get_client(config=None):
     console.print("\n🔐 Getting Twitter cookies...")
     cookies = get_cookies()
     rate_limit_config = (config or {}).get("rateLimit")
-    return TwitterClient(cookies["auth_token"], cookies["ct0"], rate_limit_config)
+    return TwitterClient(
+        cookies["auth_token"],
+        cookies["ct0"],
+        rate_limit_config,
+        cookie_string=cookies.get("cookie_string"),
+    )
 
 
 def _resolve_fetch_count(max_count, configured):

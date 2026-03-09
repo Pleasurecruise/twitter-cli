@@ -3,6 +3,7 @@
 Supports:
 1. Environment variables: TWITTER_AUTH_TOKEN + TWITTER_CT0
 2. Auto-extract from browser via browser-cookie3 (subprocess)
+   Extracts ALL Twitter cookies for full browser-like fingerprint.
 """
 
 from __future__ import annotations
@@ -30,8 +31,8 @@ def load_from_env() -> Optional[Dict[str, str]]:
     return None
 
 
-def verify_cookies(auth_token, ct0):
-    # type: (str, str) -> Dict[str, Any]
+def verify_cookies(auth_token, ct0, cookie_string=None):
+    # type: (str, str, Optional[str]) -> Dict[str, Any]
     """Verify cookies by calling a Twitter API endpoint.
 
     Uses curl_cffi for proper TLS fingerprint.
@@ -43,16 +44,23 @@ def verify_cookies(auth_token, ct0):
         "https://x.com/i/api/1.1/account/settings.json",
     ]
 
+    # Use full cookie string if available, otherwise minimal
+    cookie_header = cookie_string or "auth_token=%s; ct0=%s" % (auth_token, ct0)
+
     headers = {
         "Authorization": "Bearer %s" % BEARER_TOKEN,
-        "Cookie": "auth_token=%s; ct0=%s" % (auth_token, ct0),
+        "Cookie": cookie_header,
         "X-Csrf-Token": ct0,
         "X-Twitter-Active-User": "yes",
         "X-Twitter-Auth-Type": "OAuth2Session",
         "User-Agent": USER_AGENT,
     }
 
-    session = _cffi_requests.Session(impersonate="chrome133")
+    proxy = os.environ.get("TWITTER_PROXY", "")
+    session = _cffi_requests.Session(
+        impersonate="chrome133",
+        proxies={"https": proxy, "http": proxy} if proxy else None,
+    )
 
     for url in urls:
         try:
@@ -78,11 +86,14 @@ def verify_cookies(auth_token, ct0):
 
 
 def extract_from_browser() -> Optional[Dict[str, str]]:
-    """Auto-extract cookies from local browser using browser-cookie3.
+    """Auto-extract ALL Twitter cookies from local browser using browser-cookie3.
+
+    Extracts every cookie for .x.com and .twitter.com domains, not just
+    auth_token and ct0. This makes requests indistinguishable from real
+    browser traffic at the cookie level.
 
     Tries browsers in order: Chrome -> Edge -> Firefox -> Brave.
-    Runs in a subprocess to avoid SQLite database lock issues when the
-    browser is running.
+    Runs in a subprocess to avoid SQLite database lock issues.
     """
     extract_script = '''
 import json, sys
@@ -105,6 +116,7 @@ for name, fn in browsers:
     except Exception:
         continue
     result = {}
+    all_cookies = {}
     for cookie in jar:
         domain = cookie.domain or ""
         if domain.endswith(".x.com") or domain.endswith(".twitter.com") or domain in ("x.com", "twitter.com", ".x.com", ".twitter.com"):
@@ -112,8 +124,12 @@ for name, fn in browsers:
                 result["auth_token"] = cookie.value
             elif cookie.name == "ct0":
                 result["ct0"] = cookie.value
+            # Collect ALL cookies for full browser fingerprint
+            if cookie.name and cookie.value:
+                all_cookies[cookie.name] = cookie.value
     if "auth_token" in result and "ct0" in result:
         result["browser"] = name
+        result["all_cookies"] = all_cookies
         print(json.dumps(result))
         sys.exit(0)
 
@@ -149,7 +165,15 @@ sys.exit(1)
         if "error" in data:
             return None
         logger.info("Found cookies in %s", data.get("browser", "unknown"))
-        return {"auth_token": data["auth_token"], "ct0": data["ct0"]}
+
+        # Build full cookie string from all extracted cookies
+        cookies = {"auth_token": data["auth_token"], "ct0": data["ct0"]}
+        all_cookies = data.get("all_cookies", {})
+        if all_cookies:
+            cookie_str = "; ".join("%s=%s" % (k, v) for k, v in all_cookies.items())
+            cookies["cookie_string"] = cookie_str
+            logger.info("Extracted %d total cookies for full browser fingerprint", len(all_cookies))
+        return cookies
     except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, FileNotFoundError):
         return None
 
@@ -178,5 +202,6 @@ def get_cookies() -> Dict[str, str]:
         )
 
     # Verify only for explicit auth failures; transient endpoint issues are tolerated.
-    verify_cookies(cookies["auth_token"], cookies["ct0"])
+    verify_cookies(cookies["auth_token"], cookies["ct0"], cookies.get("cookie_string"))
     return cookies
+
