@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .constants import BEARER_TOKEN, USER_AGENT
+from .constants import BEARER_TOKEN, USER_AGENT, SEC_CH_UA, SEC_CH_UA_MOBILE, SEC_CH_UA_PLATFORM
 from .models import Author, Metrics, Tweet, TweetMedia, UserProfile
 
 try:
@@ -610,6 +610,12 @@ class TwitterClient:
             "Referer": "https://x.com",
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.9",
+            "sec-ch-ua": SEC_CH_UA,
+            "sec-ch-ua-mobile": SEC_CH_UA_MOBILE,
+            "sec-ch-ua-platform": SEC_CH_UA_PLATFORM,
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
         }
         if method == "POST":
             headers["Content-Type"] = "application/json"
