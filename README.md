@@ -255,11 +255,15 @@ twitter_cli/
 ├── __init__.py
 ├── cli.py
 ├── client.py
+├── graphql.py       # GraphQL query IDs, URL building, JS bundle scanning
+├── parser.py        # Tweet, User, Media parsing logic
 ├── auth.py
 ├── config.py
 ├── constants.py
+├── exceptions.py
 ├── filter.py
 ├── formatter.py
+├── output.py
 ├── serialization.py
 └── models.py
 ```
