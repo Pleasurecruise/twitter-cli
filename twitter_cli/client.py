@@ -33,6 +33,14 @@ from .constants import (
     get_user_agent,
     sync_chrome_version,
 )
+from .exceptions import (
+    AuthenticationError,
+    NetworkError,
+    NotFoundError,
+    QueryIdError,
+    RateLimitError,
+    TwitterAPIError,
+)
 from .models import Author, Metrics, Tweet, TweetMedia, UserProfile
 
 TimelineInstructionGetter = Callable[[Any], Any]
@@ -103,13 +111,7 @@ _cached_query_ids: Dict[str, str] = {}
 _bundles_scanned = False
 
 
-class TwitterAPIError(RuntimeError):
-    """Represents HTTP/network errors from Twitter APIs."""
 
-    def __init__(self, status_code, message):
-        # type: (int, str) -> None
-        super().__init__(message)
-        self.status_code = status_code
 
 def _best_chrome_target():
     # type: () -> str
@@ -299,7 +301,7 @@ def _resolve_query_id(operation_name, prefer_fallback=True):
         _cached_query_ids[operation_name] = fallback
         return fallback
 
-    raise RuntimeError('Cannot resolve queryId for "%s"' % operation_name)
+    raise QueryIdError('Cannot resolve queryId for "%s"' % operation_name)
 
 
 # Hard ceiling to prevent accidental massive fetches
@@ -389,7 +391,7 @@ class TwitterClient:
         data = self._graphql_get("UserByScreenName", variables, features)
         result = _deep_get(data, "data", "user", "result")
         if not result:
-            raise RuntimeError("User @%s not found" % screen_name)
+            raise NotFoundError("User @%s not found" % screen_name)
 
         legacy = result.get("legacy", {})
         return UserProfile(

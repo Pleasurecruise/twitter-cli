@@ -463,7 +463,7 @@ class TestTwitterAPIError:
     def test_stores_status_code(self):
         err = TwitterAPIError(429, "Rate limited")
         assert err.status_code == 429
-        assert str(err) == "Rate limited"
+        assert "Rate limited" in str(err)
 
     def test_is_runtime_error(self):
         err = TwitterAPIError(500, "Server error")
