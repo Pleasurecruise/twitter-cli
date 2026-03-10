@@ -55,12 +55,13 @@ def emit_structured(data: Any, *, as_json: bool, as_yaml: bool) -> bool:
     fmt = default_structured_format(as_json=as_json, as_yaml=as_yaml)
     if not fmt:
         return False
+    payload = _normalize_success_payload(data)
     if fmt == "json":
-        click.echo(json.dumps(data, ensure_ascii=False, indent=2))
+        click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         click.echo(
             yaml.safe_dump(
-                data,
+                payload,
                 allow_unicode=True,
                 sort_keys=False,
                 default_flow_style=False,
@@ -91,3 +92,10 @@ def error_payload(code: str, message: str, *, details: Any | None = None) -> dic
         "schema_version": _SCHEMA_VERSION,
         "error": error,
     }
+
+
+def _normalize_success_payload(data: Any) -> Any:
+    """Wrap plain structured data in the shared agent success schema."""
+    if isinstance(data, dict) and data.get("schema_version") == _SCHEMA_VERSION and "ok" in data:
+        return data
+    return success_payload(data)
