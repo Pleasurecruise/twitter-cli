@@ -29,7 +29,7 @@ FALLBACK_QUERY_IDS = {
     "UserByScreenName": "qRednkZG-rn1P6b48NINmQ",
     "UserTweets": "E3opETHurmVJflFsUBVuUQ",
     "TweetDetail": "nBS-WpgA6ZG0CyNHD517JQ",
-    "Likes": "aeJWz7GtGNHHO2Z3GrjCWg",
+    "Likes": "dv5-II7_Bup_PHish7p6fw",
     "SearchTimeline": "MJpyQGqgklrVl_0X9gNy3A",
     "Bookmarks": "uzboyXSHSJrR-mGJqep0TQ",
     "ListLatestTweetsTimeline": "ZBbXrl0FVnTqp7K6EAADog",
