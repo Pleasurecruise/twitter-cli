@@ -145,7 +145,7 @@ twitter tweet 1234567890               # Tweet detail + replies
 twitter tweet https://x.com/user/status/12345  # Accepts URL
 twitter list 1539453138322673664       # List timeline
 twitter user-posts elonmusk --max 20   # User's tweets
-twitter likes elonmusk --max 30        # User's likes
+twitter likes elonmusk --max 30        # User's likes (own only, see note)
 twitter followers elonmusk --max 50    # Followers
 twitter following elonmusk --max 50    # Following
 ```
@@ -282,6 +282,7 @@ twitter bookmarks --filter
 - **No notifications** — can't read notifications
 - **No polls** — can't create polls
 - **Single account** — one set of credentials at a time
+- **Likes are private** — Twitter/X made all likes private since June 2024. `twitter likes` only works for your own account
 
 ## Safety Notes
 

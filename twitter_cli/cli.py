@@ -539,7 +539,11 @@ def search(ctx, query, product, max_count, as_json, as_yaml, output_file, do_fil
 @click.pass_context
 def likes(ctx, screen_name, max_count, as_json, as_yaml, output_file, do_filter):
     # type: (Any, str, int, bool, bool, Optional[str], bool) -> None
-    """Show tweets liked by a user. SCREEN_NAME is the @handle (without @)."""
+    """Show tweets liked by a user. SCREEN_NAME is the @handle (without @).
+
+    NOTE: Twitter/X made all likes private since June 2024. You can only view
+    your own likes. Querying another user's likes will return empty results.
+    """
     screen_name = screen_name.lstrip("@")
     compact = ctx.obj.get("compact", False)
     config = load_config()
@@ -549,6 +553,26 @@ def likes(ctx, screen_name, max_count, as_json, as_yaml, output_file, do_filter)
         if rich_output:
             console.print("👤 Fetching @%s's profile..." % screen_name)
         profile = client.fetch_user(screen_name)
+
+        # Warn if querying another user's likes (Twitter made likes private since June 2024)
+        try:
+            me = client.fetch_me()
+            if me.screen_name.lower() != screen_name.lower():
+                if rich_output:
+                    console.print(
+                        "\n[yellow]⚠️  Twitter/X made all likes private since June 2024. "
+                        "You can only view your own likes. "
+                        "Querying @%s's likes will likely return empty results.[/yellow]\n" % screen_name
+                    )
+                else:
+                    logger.warning(
+                        "Twitter/X made likes private (June 2024). "
+                        "Only your own likes are visible. @%s's likes will likely be empty.",
+                        screen_name,
+                    )
+        except Exception:
+            pass  # Don't block the command if whoami fails
+
         _fetch_and_display(
             lambda count: client.fetch_user_likes(profile.id, count),
             "@%s likes" % screen_name, "❤️", max_count, as_json, as_yaml, output_file, do_filter, config,
