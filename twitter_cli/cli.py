@@ -1007,7 +1007,6 @@ def doctor(as_json, as_yaml):
         _diagnose_keychain_issues,
         _extract_in_process,
         _extract_via_subprocess,
-        extract_from_browser,
         load_from_env,
         verify_cookies,
     )

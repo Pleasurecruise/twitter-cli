@@ -567,7 +567,7 @@ def get_cookies() -> Dict[str, str]:
         if hint:
             lines.append("")
             lines.append("Likely cause:")
-            lines.extend("  " + l for l in hint.splitlines())
+            lines.extend("  " + line for line in hint.splitlines())
             lines.append("")
         lines.append("Option 1: Set TWITTER_AUTH_TOKEN and TWITTER_CT0 environment variables")
         lines.append("Option 2: Make sure you are logged into x.com in your browser (Arc/Chrome/Edge/Firefox/Brave)")
