@@ -425,6 +425,70 @@ def test_cli_unfollow_command(monkeypatch) -> None:
     assert actions == [("unfollow", "42")]
 
 
+def test_cli_search_advanced_options(monkeypatch) -> None:
+    captured = {}
+
+    class FakeClient:
+        def fetch_search(self, query: str, count: int, product: str):
+            captured["query"] = query
+            captured["product"] = product
+            return []
+
+    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli.load_config",
+        lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(cli, [
+        "search", "python",
+        "--from", "elonmusk",
+        "--lang", "en",
+        "--since", "2026-01-01",
+        "--has", "links",
+        "--exclude", "retweets",
+        "--min-likes", "100",
+        "-t", "Latest",
+        "--json",
+    ])
+
+    assert result.exit_code == 0, f"search failed: {result.output}"
+    assert captured["query"] == (
+        "python from:elonmusk lang:en since:2026-01-01 "
+        "filter:links -filter:retweets min_faves:100"
+    )
+    assert captured["product"] == "Latest"
+
+
+def test_cli_search_operators_only_no_query(monkeypatch) -> None:
+    captured = {}
+
+    class FakeClient:
+        def fetch_search(self, query: str, count: int, product: str):
+            captured["query"] = query
+            return []
+
+    monkeypatch.setattr("twitter_cli.cli._get_client", lambda config=None: FakeClient())
+    monkeypatch.setattr(
+        "twitter_cli.cli.load_config",
+        lambda: {"fetch": {"count": 50}, "filter": {}, "rateLimit": {}},
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["search", "--from", "bbc", "--json"])
+    assert result.exit_code == 0, f"search failed: {result.output}"
+    assert captured["query"] == "from:bbc"
+
+
+def test_cli_search_empty_query_no_options() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["search"])
+    assert result.exit_code != 0
+    assert "Provide a QUERY" in result.output
+
+
 def test_cli_compact_mode(tmp_path, tweet_factory) -> None:
     json_path = tmp_path / "tweets.json"
     json_path.write_text(tweets_to_json([tweet_factory("1")]), encoding="utf-8")

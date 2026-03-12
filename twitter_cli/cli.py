@@ -5,6 +5,7 @@ Read commands:
     twitter feed -t following         # following feed
     twitter bookmarks                 # bookmarks
     twitter search "query"            # search tweets
+    twitter search "query" --from user  # advanced search
     twitter user elonmusk             # user profile
     twitter user-posts elonmusk       # user tweets
     twitter likes elonmusk            # user likes
@@ -87,6 +88,8 @@ logger = logging.getLogger(__name__)
 console = Console(stderr=True)
 FEED_TYPES = ["for-you", "following"]
 SEARCH_PRODUCTS = ["Top", "Latest", "Photos", "Videos"]
+SEARCH_HAS_CHOICES = ["links", "images", "videos", "media"]
+SEARCH_EXCLUDE_CHOICES = ["retweets", "replies", "links"]
 
 
 def _agent_user_profile(profile: UserProfile) -> dict:
@@ -537,7 +540,7 @@ def user_posts(ctx, screen_name, max_count, as_json, as_yaml, output_file, full_
 
 
 @cli.command()
-@click.argument("query")
+@click.argument("query", default="")
 @click.option(
     "--type",
     "-t",
@@ -546,23 +549,70 @@ def user_posts(ctx, screen_name, max_count, as_json, as_yaml, output_file, full_
     default="Top",
     help="Search tab: Top, Latest, Photos, or Videos.",
 )
+@click.option("--from", "from_user", type=str, default=None, help="Only tweets from this user.")
+@click.option("--to", "to_user", type=str, default=None, help="Only tweets directed at this user.")
+@click.option("--lang", type=str, default=None, help="Filter by language (ISO code, e.g. en, fr, ja).")
+@click.option("--since", type=str, default=None, help="Tweets since date (YYYY-MM-DD).")
+@click.option("--until", type=str, default=None, help="Tweets until date (YYYY-MM-DD).")
+@click.option(
+    "--has",
+    type=click.Choice(SEARCH_HAS_CHOICES, case_sensitive=False),
+    multiple=True,
+    help="Require content type (links, images, videos, media). Repeatable.",
+)
+@click.option(
+    "--exclude",
+    type=click.Choice(SEARCH_EXCLUDE_CHOICES, case_sensitive=False),
+    multiple=True,
+    help="Exclude content type (retweets, replies, links). Repeatable.",
+)
+@click.option("--min-likes", type=int, default=None, help="Minimum number of likes.")
+@click.option("--min-retweets", type=int, default=None, help="Minimum number of retweets.")
 @click.option("--max", "-n", "max_count", type=int, default=None, help="Max number of tweets to fetch.")
 @structured_output_options
 @click.option("--output", "-o", "output_file", type=str, default=None, help="Save tweets to JSON file.")
 @click.option("--filter", "do_filter", is_flag=True, help="Enable score-based filtering.")
 @click.option("--full-text", is_flag=True, help="Show full tweet text in table output.")
 @click.pass_context
-def search(ctx, query, product, max_count, as_json, as_yaml, output_file, do_filter, full_text):
-    # type: (Any, str, str, int, bool, bool, Optional[str], bool, bool) -> None
-    """Search tweets by QUERY string."""
+def search(ctx, query, product, from_user, to_user, lang, since, until, has, exclude, min_likes, min_retweets, max_count, as_json, as_yaml, output_file, do_filter, full_text):
+    # type: (Any, str, str, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], tuple, tuple, Optional[int], Optional[int], int, bool, bool, Optional[str], bool, bool) -> None
+    """Search tweets by QUERY string with optional advanced filters.
+
+    QUERY is the search keywords (optional when using advanced filters).
+
+    Advanced search examples:
+
+    \b
+      twitter search "python" --from elonmusk
+      twitter search "AI" --lang en --since 2026-01-01
+      twitter search "rust" --has links --min-likes 100
+      twitter search --from bbc --exclude retweets
+    """
+    from .search import build_search_query
+
+    composed_query = build_search_query(
+        query,
+        from_user=from_user,
+        to_user=to_user,
+        lang=lang,
+        since=since,
+        until=until,
+        has=list(has) if has else None,
+        exclude=list(exclude) if exclude else None,
+        min_likes=min_likes,
+        min_retweets=min_retweets,
+    )
+    if not composed_query:
+        raise click.UsageError("Provide a QUERY or at least one advanced filter (e.g. --from, --lang).")
+
     compact = ctx.obj.get("compact", False)
     config = load_config()
     def _run():
         rich_output = use_rich_output(as_json=as_json, as_yaml=as_yaml, compact=compact)
         client = _get_client_for_output(config, quiet=not rich_output)
         _fetch_and_display(
-            lambda count: client.fetch_search(query, count, product),
-            "'%s' (%s)" % (query, product), "🔍", max_count, as_json, as_yaml, output_file, do_filter, config,
+            lambda count: client.fetch_search(composed_query, count, product),
+            "'%s' (%s)" % (composed_query, product), "🔍", max_count, as_json, as_yaml, output_file, do_filter, config,
             compact=compact, full_text=full_text,
         )
     _run_guarded(_run)
